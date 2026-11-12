@@ -36,6 +36,7 @@ export type CreateProjectInput = {
   paymentProofs?: { url: string; amount: number; date: string }[];
   addOns: { id: string; name: string; price: number }[];
   additionalPackages?: { id: string; name: string; price: number }[];
+  customCosts?: { id: string; description: string; amount: number }[];
   durationSelection?: string;
   unitPrice?: number;
   address?: string;
@@ -214,31 +215,9 @@ async function linkProjectAddOns(projectId: string, addOns: Array<{ id?: string;
 
   const addOnIdByName: Record<string, string> = Object.fromEntries((addOnRows || []).map(r => [r.name, r.id]));
 
-  // Check if any add-on or custom item doesn't exist in ADD_ONS table
-  const missing = validAddOns.filter(a => !addOnIdByName[a.name.trim()]);
-  if (missing.length > 0) {
-    try {
-      const distinctMissing = Array.from(new Set(missing.map(m => m.name.trim()))).map(name => {
-        const item = missing.find(m => m.name.trim() === name);
-        return {
-          name,
-          price: Number(item?.price ?? 0),
-        };
-      });
-      const { data: createdRows, error: createErr } = await supabase
-        .from(ADD_ONS)
-        .insert(distinctMissing)
-        .select('id, name');
-      if (!createErr && createdRows) {
-        createdRows.forEach(r => {
-          addOnIdByName[r.name] = r.id;
-        });
-      }
-    } catch (e) {
-      console.warn('Failed to auto-create custom add-on in ADD_ONS table:', e);
-    }
-  }
-
+  // Hanya hubungkan add-on yang memang sudah ada di katalog. Item ad-hoc
+  // (mis. "Item Custom" pada form pengantin) tidak boleh dibuat otomatis
+  // sebagai add-on baru karena akan mengotori daftar Add-On.
   const uniqueAddOnIds = Array.from(new Set(
     validAddOns
       .map(a => addOnIdByName[a.name.trim()])

@@ -108,6 +108,14 @@ export const useClientFormHandler = ({
             const storedAdditionalPackagePrices: Record<string, number> = {};
             const storedAdditionalPackageDurations: Record<string, string> = {};
             const customItemsList: CustomFormItem[] = [];
+            // Item custom kini tersimpan di kolom custom_costs pada proyek, bukan di katalog add_ons.
+            (freshProject?.customCosts || []).forEach((cost: any) => {
+                customItemsList.push({
+                    id: cost.id || `custom-${Math.random().toString(36).substr(2, 9)}`,
+                    name: cost.description || 'Item Tambahan',
+                    price: Number(cost.amount ?? 0),
+                });
+            });
             const mainPackageId = freshProject?.packageId || packages.find(
                 item => item.name?.toLowerCase().trim() === freshProject?.packageName?.toLowerCase().trim()
             )?.id;
@@ -221,8 +229,9 @@ export const useClientFormHandler = ({
                 selectedAddOnIds: standardAddOnIds,
                 selectedAddOnPriceOverrides: storedAddOnPrices,
                 customItems: customItemsList,
-                preservedProjectExtras: (freshProject?.customCosts?.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0) || 0)
-                    + (Number(freshProject?.transportCost) || 0),
+                // customCosts sudah ditampilkan sebagai customItems, jadi hanya biaya
+                // transport yang perlu dipertahankan agar total acara tidak berubah.
+                preservedProjectExtras: Number(freshProject?.transportCost) || 0,
                 durationSelection: (freshProject as any)?.durationSelection || '',
                 unitPrice: reconstructedPackagePrice ?? (storedUnitPrice !== undefined && storedUnitPrice !== null
                     ? Number(storedUnitPrice)
@@ -376,10 +385,12 @@ export const useClientFormHandler = ({
             name: ci.name.trim(),
             price: Math.max(0, Number(ci.price) || 0),
         }));
-        const allProjectAddOns = [
-            ...selectedAddOns.map(a => ({ id: a.id, name: a.name, price: a.price })),
-            ...customItems,
-        ];
+        const allProjectAddOns = selectedAddOns.map(a => ({ id: a.id, name: a.name, price: a.price }));
+        const customCosts = customItems.map(item => ({
+            id: item.id,
+            description: item.name,
+            amount: item.price,
+        }));
 
         const packagePriceChosen =
             formData.unitPrice !== undefined && !isNaN(Number(formData.unitPrice))
@@ -488,8 +499,9 @@ export const useClientFormHandler = ({
                     dpProofUrl,
                     addOns: allProjectAddOns,
                     additionalPackages: additionalPackageRecords,
+                    customCosts,
                 });
-                const mergedProject: Project = { ...createdProject, addOns: allProjectAddOns as any, additionalPackages: additionalPackageRecords };
+                const mergedProject: Project = { ...createdProject, addOns: allProjectAddOns as any, additionalPackages: additionalPackageRecords, customCosts };
                 setProjects(prev => [mergedProject, ...prev]);
 
                 // Create DP transaction (persist to Supabase) if any
@@ -678,14 +690,16 @@ export const useClientFormHandler = ({
                 name: ci.name.trim(),
                 price: Math.max(0, Number(ci.price) || 0),
             }));
-            const allProjectAddOns = [
-                ...selectedAddOns.map(a => ({
-                    id: a.id,
-                    name: a.name,
-                    price: formData.selectedAddOnPriceOverrides?.[a.id] ?? a.price,
-                })),
-                ...customItems,
-            ];
+            const allProjectAddOns = selectedAddOns.map(a => ({
+                id: a.id,
+                name: a.name,
+                price: formData.selectedAddOnPriceOverrides?.[a.id] ?? a.price,
+            }));
+            const customCosts = customItems.map(item => ({
+                id: item.id,
+                description: item.name,
+                amount: item.price,
+            }));
 
             // Package price calculation with safety fallback
             const fallbackPrice = existingProject
@@ -767,6 +781,7 @@ export const useClientFormHandler = ({
                         address: formData.address || undefined,
                         addOns: allProjectAddOns,
                         additionalPackages: additionalPackageRecords,
+                        customCosts,
                     });
                     setProjects(prev => [createdProject, ...prev]);
                     setSelectedProject(createdProject);
@@ -882,6 +897,7 @@ export const useClientFormHandler = ({
                     promoCodeId: formData.promoCodeId || existingProject.promoCodeId,
                     discountAmount: finalDiscountAmount > 0 ? finalDiscountAmount : existingProject.discountAmount,
                     addOns: allProjectAddOns as any,
+                    customCosts,
                 };
 
                 try {
@@ -909,6 +925,7 @@ export const useClientFormHandler = ({
                         address: updatedProjectPayload.address || undefined,
                         addOns: allProjectAddOns,
                         additionalPackages: additionalPackageRecords,
+                        customCosts,
                     });
 
                     const finalMergedProject: Project = {
@@ -917,6 +934,7 @@ export const useClientFormHandler = ({
                         ...updatedProjectPayload,
                         addOns: allProjectAddOns as any,
                         additionalPackages: additionalPackageRecords,
+                        customCosts,
                     };
                     setProjects(prev => prev.map(p => (p.id === finalMergedProject.id ? finalMergedProject : p)));
 
