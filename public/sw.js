@@ -1,10 +1,10 @@
 /* ==========================================================================
-   Attera Visual - Service Worker & Web Push Notification Handler
+   Vena Pictures - Service Worker & Web Push Notification Handler
    Supports: iOS Safari 16.4+ (PWA Standalone), macOS Safari,
              Chrome Android, Chrome Desktop, Edge, and Firefox.
    ========================================================================== */
 
-const CACHE_NAME = 'attera-visual-cache-v2';
+const CACHE_NAME = 'vena-pictures-cache-v3';
 
 // Install event - activate immediately
 self.addEventListener('install', (event) => {
@@ -33,12 +33,12 @@ self.addEventListener('activate', (event) => {
 // Push event handler - receives push messages even when website is closed
 self.addEventListener('push', (event) => {
   let payload = {
-    title: 'Attera Visual',
+    title: 'Vena Pictures',
     body: 'Notifikasi baru diterima.',
     icon: '/pwa-192x192.png',
     badge: '/pwa-192x192.png',
     url: '/',
-    tag: 'attera-visual-push-' + Date.now(),
+    tag: 'vena-pictures-push-' + Date.now(),
   };
 
   if (event.data) {

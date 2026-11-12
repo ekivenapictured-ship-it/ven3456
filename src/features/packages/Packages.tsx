@@ -1000,8 +1000,8 @@ export const Packages: React.FC<PackagesProps> = ({
         if (navigator.share) {
             try {
                 await navigator.share({
-                    title: `${pkg.name} - ${profile?.companyName || 'Attera Visual'}`,
-                    text: `Lihat paket ${pkg.name} dari ${profile?.companyName || 'Attera Visual'}`,
+                    title: `${pkg.name} - ${profile?.companyName || 'Vena Pictures'}`,
+                    text: `Lihat paket ${pkg.name} dari ${profile?.companyName || 'Vena Pictures'}`,
                     url: shareUrl,
                 });
                 showNotification(`Paket "${pkg.name}" berhasil dibagikan!`);

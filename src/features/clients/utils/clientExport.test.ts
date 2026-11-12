@@ -152,7 +152,7 @@ const buildWorkbook = () => buildClientExportWorkbook(
     [clientWithTwoProjects],
     transactions as never,
     teamProjectPayments as never,
-    { companyName: 'Attera Visual' },
+    { companyName: 'Vena Pictures' },
 );
 
 describe('clientExport', () => {
@@ -284,7 +284,7 @@ describe('clientExport', () => {
 
     it('menampilkan informasi pada sheet kosong dan tetap menyediakan header', () => {
         const emptyClient = buildClient({ id: 'client-2', name: 'Klien Tanpa Proyek', projects: [] });
-        const workbook = buildClientExportWorkbook([emptyClient], [], [], { companyName: 'Attera Visual' });
+        const workbook = buildClientExportWorkbook([emptyClient], [], [], { companyName: 'Vena Pictures' });
         const expenseSheet = workbook.getWorksheet('Pengeluaran Proyek')!;
         const teamSheet = workbook.getWorksheet('Tim & Honor')!;
         const eventSheet = workbook.getWorksheet('Pengantin & Acara Pernikahan')!;
@@ -302,7 +302,7 @@ describe('clientExport', () => {
             [clientWithTwoProjects],
             transactions as never,
             teamProjectPayments as never,
-            { companyName: 'Attera Visual' },
+            { companyName: 'Vena Pictures' },
         );
 
         expect(payloads.map((payload) => payload.category)).toEqual([...CLIENT_EXPORT_CSV_CATEGORIES]);

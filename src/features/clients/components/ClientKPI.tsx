@@ -542,10 +542,25 @@ const ClientReports: React.FC<ClientReportsProps> = ({
                 (client.address || client.homeAddress || '').toLowerCase().includes(query),
             );
         }
+        // Tanggal acara paling awal per pengantin, dipakai untuk mengurutkan tabel
+        // rincian dari tanggal 1 sampai 31 supaya nomor urutnya tampil rapi.
+        const eventDateByClient = new Map<string, string>();
+        filteredProjects.forEach(project => {
+            if (!project.clientId || !project.date) return;
+            const current = eventDateByClient.get(project.clientId);
+            if (!current || project.date < current) eventDateByClient.set(project.clientId, project.date);
+        });
         result.sort((a, b) => {
             switch (sortBy) {
                 case 'name': return a.name.localeCompare(b.name);
-                case 'date': return new Date(b.since).getTime() - new Date(a.since).getTime();
+                case 'date': {
+                    const dateA = eventDateByClient.get(a.id);
+                    const dateB = eventDateByClient.get(b.id);
+                    if (!dateA && !dateB) return a.name.localeCompare(b.name);
+                    if (!dateA) return 1;
+                    if (!dateB) return -1;
+                    return dateA.localeCompare(dateB) || a.name.localeCompare(b.name);
+                }
                 case 'value':
                     return filteredProjects.filter(project => project.clientId === b.id).reduce((sum, project) => sum + project.totalCost, 0)
                         - filteredProjects.filter(project => project.clientId === a.id).reduce((sum, project) => sum + project.totalCost, 0);
@@ -1727,8 +1742,10 @@ const ClientReports: React.FC<ClientReportsProps> = ({
                             <span className="text-xs text-brand-text-secondary whitespace-nowrap">{typeReportClientsInTable.length} data ditemukan</span>
                         </div>
                         <div className="overflow-x-auto">
-                            <table className="report-table kpi-detail-table w-full min-w-[1498px] table-fixed text-left text-xs">
+                            <table className="report-table kpi-detail-table w-full min-w-[1552px] table-fixed text-left text-xs">
                                 <colgroup>
+                                    <col className="w-[54px]" />
+                                    <col className="w-[108px]" />
                                     <col className="w-[170px]" />
                                     <col className="w-[92px]" />
                                     <col className="w-[110px]" />
@@ -1737,10 +1754,11 @@ const ClientReports: React.FC<ClientReportsProps> = ({
                                     <col className="w-[320px]" />
                                     <col className="w-[130px]" />
                                     <col className="w-[118px]" />
-                                    <col className="w-[108px]" />
                                 </colgroup>
                                 <thead className="sticky top-0 z-10 bg-brand-accent text-white">
                                     <tr>
+                                        <th className="p-3 font-semibold whitespace-nowrap text-center">No</th>
+                                        <th className="p-3 font-semibold whitespace-nowrap">Tanggal Acara</th>
                                         <th className="p-3 font-semibold whitespace-nowrap">Pengantin</th>
                                         <th className="p-3 font-semibold whitespace-nowrap">Tipe</th>
                                         <th className="p-3 font-semibold whitespace-nowrap">Kota / Daerah</th>
@@ -1754,11 +1772,10 @@ const ClientReports: React.FC<ClientReportsProps> = ({
                                             Laba Bersih
                                         </th>
                                         <th className="p-3 font-semibold whitespace-nowrap">Status Bayar</th>
-                                        <th className="p-3 font-semibold whitespace-nowrap">Tanggal Acara</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-brand-border/50">
-                                    {typeReportClientsInTable.map(c => {
+                                    {typeReportClientsInTable.map((c, rowIndex) => {
                                         const {
                                             isDirect,
                                             totalVal,
@@ -1776,6 +1793,16 @@ const ClientReports: React.FC<ClientReportsProps> = ({
                                         );
                                         return (
                                             <tr key={c.id} className="odd:bg-brand-surface even:bg-brand-bg/40 hover:bg-brand-accent/10 transition-colors align-top">
+                                                <td className="p-3 text-center font-semibold text-brand-text-secondary tabular-nums">{rowIndex + 1}</td>
+                                                <td className="p-3 text-brand-text-secondary tabular-nums whitespace-nowrap">
+                                                    {eventDates.length > 0 ? (
+                                                        <div className="space-y-1">
+                                                            {eventDates.map((date, index) => (
+                                                                <p key={`${date}-${index}`}>{new Date(date).toLocaleDateString('id-ID')}</p>
+                                                            ))}
+                                                        </div>
+                                                    ) : '-'}
+                                                </td>
                                                 <td className="p-3">
                                                     <p className="font-bold text-brand-text-light">{c.name}</p>
                                                     <p className="text-[11px] text-brand-text-secondary">{c.phone || c.email || '-'}</p>
@@ -1851,21 +1878,12 @@ const ClientReports: React.FC<ClientReportsProps> = ({
                                                         {payStatus}
                                                     </span>
                                                 </td>
-                                                <td className="p-3 text-brand-text-secondary tabular-nums whitespace-nowrap">
-                                                    {eventDates.length > 0 ? (
-                                                        <div className="space-y-1">
-                                                            {eventDates.map((date, index) => (
-                                                                <p key={`${date}-${index}`}>{new Date(date).toLocaleDateString('id-ID')}</p>
-                                                            ))}
-                                                        </div>
-                                                    ) : '-'}
-                                                </td>
                                             </tr>
                                         );
                                     })}
                                     {typeReportClientsInTable.length === 0 && (
                                         <tr>
-                                            <td colSpan={9} className="p-8 text-center text-brand-text-secondary">
+                                            <td colSpan={10} className="p-8 text-center text-brand-text-secondary">
                                                 Tidak ada data pengantin untuk filter ini.
                                             </td>
                                         </tr>
@@ -1873,13 +1891,13 @@ const ClientReports: React.FC<ClientReportsProps> = ({
                                 </tbody>
                                 <tfoot>
                                     <tr className="border-t-2 border-brand-accent bg-brand-bg font-bold text-brand-text-primary">
-                                        <td colSpan={4} className="p-3">TOTAL ({typeReportClientsInTable.length} pengantin)</td>
+                                        <td colSpan={6} className="p-3">TOTAL ({typeReportClientsInTable.length} pengantin)</td>
                                         <td className="p-3 text-right tabular-nums whitespace-nowrap">{formatCurrency(typeReportClientTableTotals.projectValue)}</td>
                                         <td className="p-3 text-right tabular-nums whitespace-nowrap">{formatCurrency(typeReportClientTableTotals.expense)}</td>
                                         <td className={`p-3 text-right tabular-nums whitespace-nowrap ${typeReportClientTableTotals.netProfit >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
                                             {formatCurrency(typeReportClientTableTotals.netProfit)}
                                         </td>
-                                        <td colSpan={2} className="p-3" />
+                                        <td className="p-3" />
                                     </tr>
                                 </tfoot>
                             </table>

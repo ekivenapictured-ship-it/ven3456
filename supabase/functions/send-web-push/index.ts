@@ -173,12 +173,12 @@ serve(async (req: Request) => {
     }
 
     const pushPayload = JSON.stringify({
-      title: title || "Attera Visual",
+      title: title || "Vena Pictures",
       body: message || "Ada pembaruan baru di aplikasi.",
       icon: icon || "/pwa-192x192.png",
       badge: "/pwa-192x192.png",
       url: url || "/",
-      tag: tag || `attera-visual-${Date.now()}`,
+      tag: tag || `vena-pictures-${Date.now()}`,
       timestamp: Date.now(),
     });
 

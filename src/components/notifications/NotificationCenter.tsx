@@ -234,7 +234,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
       {/* Main Notification Container (Desktop Popover / Mobile Top Dropdown) */}
       <div
         role="dialog"
-        aria-label="Panel Notifikasi Attera Visual"
+        aria-label="Panel Notifikasi Vena Pictures"
         className="
           fixed sm:absolute
           inset-x-0 top-[calc(4rem_+_var(--safe-area-inset-top))] sm:bottom-auto sm:top-full sm:right-0 sm:left-auto

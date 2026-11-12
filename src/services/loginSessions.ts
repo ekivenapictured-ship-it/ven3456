@@ -61,7 +61,7 @@ export async function registerCurrentLoginSession(user: User, options: { notify?
     });
     if (notificationError) throw notificationError;
 
-    const profile = await getProfile().catch(() => null);
+    const profile = await getProfile().catch((): null => null);
     if (profile?.id) {
       await dispatchWebPush({
         vendor_id: profile.id,
@@ -70,7 +70,7 @@ export async function registerCurrentLoginSession(user: User, options: { notify?
         title,
         message,
         url: '/#/Pengaturan',
-        tag: 'attera-admin-login',
+        tag: 'vena-admin-login',
       });
     }
   } catch (error) {

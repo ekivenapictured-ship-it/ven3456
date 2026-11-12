@@ -119,7 +119,7 @@ describe('profile booking template envelope', () => {
       fullName: 'Admin',
       email: 'atter@admin.com',
       phone: '081200000000',
-      companyName: 'Attera Visual',
+      companyName: 'Vena Pictures',
       address: 'Studio address',
       bankAccount: 'Business account',
       authorizedSigner: 'Admin',

@@ -691,6 +691,8 @@ const ProjectsTab: React.FC<{
   const safeProjects = projects || [];
   const safeMembers = teamMembers || [];
   const safeStatusConfig = profile?.projectStatusConfig || [];
+  const uiTextOverrides = useUiTextOverrides();
+  const portalText = (key: string, fallback: string) => customizeUiText(`portal.client.${key}`, fallback, uiTextOverrides);
 
   const [selectedId, setSelectedId] = useState<string | null>(safeProjects[0]?.id || null);
 
@@ -1012,7 +1014,7 @@ const GalleryTab: React.FC<{ projects: Project[]; packages?: Package[] }> = ({ p
                 Semua file tersimpan aman di Google Drive dan dapat diakses langsung tanpa batas waktu.
               </span>
               <span className="text-zinc-400 text-[10px]">
-                Sinkronisasi Cloud Attera Visual
+                Sinkronisasi Cloud Vena Pictures
               </span>
             </div>
           </div>

@@ -35,7 +35,7 @@ try {
     }
     
     $body = @{
-        prompt = "Halo! Tolong jawab dengan singkat: Apa itu Attera Visual?"
+        prompt = "Halo! Tolong jawab dengan singkat: Apa itu Vena Pictures?"
     } | ConvertTo-Json
     
     Write-Host "📤 Sending request..." -ForegroundColor Yellow

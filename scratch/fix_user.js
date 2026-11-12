@@ -14,9 +14,9 @@ if (!supabaseUrlMatch || !supabaseKeyMatch) {
 const supabase = createClient(supabaseUrlMatch[1].trim(), supabaseKeyMatch[1].trim());
 
 const adminEmail = 'atter@admin.com';
-const adminPassword = process.env.ATTERA_ADMIN_PASSWORD;
+const adminPassword = process.env.VENA_ADMIN_PASSWORD;
 if (!adminPassword) {
-  throw new Error('Set ATTERA_ADMIN_PASSWORD before running this helper.');
+  throw new Error('Set VENA_ADMIN_PASSWORD before running this helper.');
 }
 
 async function run() {

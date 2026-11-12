@@ -1,6 +1,6 @@
 # Panduan Backup Database Supabase
 
-Dokumentasi lengkap untuk backup dan restore database Supabase project Attera Visual.
+Dokumentasi lengkap untuk backup dan restore database Supabase project Vena Pictures.
 
 ## 📋 Ringkasan
 
@@ -275,5 +275,5 @@ console.log(clients);
 ---
 
 **Last Updated**: 1 Maret 2026
-**Project**: Attera Visual Dashboard
+**Project**: Vena Pictures Dashboard
 **Database**: dvpzxkrfomvrvndgsshk.supabase.co

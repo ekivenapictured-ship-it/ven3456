@@ -297,7 +297,7 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({
               ) : (
                 <img
                   src="/assets/images/logos/logoIcon.svg"
-                  alt="Attera Visual Logo"
+                  alt="Vena Pictures Logo"
                   width="32"
                   height="32"
                   loading="lazy"
@@ -316,7 +316,7 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({
                 truncate
                 block
               ">
-                {profile?.companyName || 'Attera Visual'}
+                {profile?.companyName || 'Vena Pictures'}
               </span>
             </div>
           </div>
