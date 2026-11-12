@@ -1,0 +1,1 @@
+const s="/assets/LiberationSans-Regular-cbskN6YR.ttf",a="/assets/LiberationSans-Bold-BPt4bU5Z.ttf",t="/assets/LiberationSans-Italic-5QhGB3P9.ttf",n="/assets/LiberationSans-BoldItalic-Bj53-jFw.ttf";export{a,t as b,n as c,s};

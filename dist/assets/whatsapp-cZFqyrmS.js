@@ -1,0 +1,1 @@
+function c(t){if(!t)return"";let e=t.replace(/\D/g,"");return e.startsWith("0")&&(e="62"+e.slice(1)),e}function a(t,e){const n=c(t);if(!n)return"#";const r=encodeURIComponent(e);return`https://wa.me/${n}?text=${r}`}export{c,a as g};

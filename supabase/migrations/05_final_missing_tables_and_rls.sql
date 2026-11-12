@@ -1,0 +1,53 @@
+-- 05_final_missing_tables_and_rls.sql
+-- Membuat tabel galleries dan wedding_day_checklists yang tertinggal
+-- Serta menonaktifkan RLS untuk SELURUH tabel agar aplikasi (anon) bisa mengaksesnya tanpa error 401/404.
+
+CREATE TABLE IF NOT EXISTS wedding_day_checklists (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+    category VARCHAR(255) NOT NULL,
+    item_name VARCHAR(255) NOT NULL,
+    is_completed BOOLEAN DEFAULT false,
+    assigned_to VARCHAR(255),
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS galleries (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    region VARCHAR(100) NOT NULL,
+    description TEXT,
+    is_public BOOLEAN DEFAULT false,
+    public_id VARCHAR(255) UNIQUE NOT NULL,
+    booking_link VARCHAR(255),
+    pdf_url TEXT,
+    pdf_name TEXT,
+    images JSONB DEFAULT '[]'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- MATIKAN RLS UNTUK SEMUA TABEL!
+ALTER TABLE users DISABLE ROW LEVEL SECURITY;
+ALTER TABLE profiles DISABLE ROW LEVEL SECURITY;
+ALTER TABLE clients DISABLE ROW LEVEL SECURITY;
+ALTER TABLE projects DISABLE ROW LEVEL SECURITY;
+ALTER TABLE team_members DISABLE ROW LEVEL SECURITY;
+ALTER TABLE packages DISABLE ROW LEVEL SECURITY;
+ALTER TABLE pockets DISABLE ROW LEVEL SECURITY;
+ALTER TABLE cards DISABLE ROW LEVEL SECURITY;
+ALTER TABLE transactions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE leads DISABLE ROW LEVEL SECURITY;
+ALTER TABLE client_feedback DISABLE ROW LEVEL SECURITY;
+ALTER TABLE team_payment_records DISABLE ROW LEVEL SECURITY;
+ALTER TABLE promo_codes DISABLE ROW LEVEL SECURITY;
+ALTER TABLE notifications DISABLE ROW LEVEL SECURITY;
+ALTER TABLE add_ons DISABLE ROW LEVEL SECURITY;
+ALTER TABLE project_team_assignments DISABLE ROW LEVEL SECURITY;
+ALTER TABLE project_add_ons DISABLE ROW LEVEL SECURITY;
+ALTER TABLE wedding_day_checklists DISABLE ROW LEVEL SECURITY;
+ALTER TABLE galleries DISABLE ROW LEVEL SECURITY;
+ALTER TABLE calendar_events DISABLE ROW LEVEL SECURITY;

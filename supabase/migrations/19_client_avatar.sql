@@ -1,0 +1,3 @@
+-- Add the profile avatar URL used by clients and wedding portals.
+ALTER TABLE public.clients
+    ADD COLUMN IF NOT EXISTS avatar_url TEXT;
