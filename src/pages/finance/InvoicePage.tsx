@@ -29,7 +29,7 @@ import {
   DocumentToView,
 } from '../../features/clients/hooks/useClientDocumentActions';
 import { updateProject as updateProjectInDb } from '../../services/projects';
-import { updateTransaction as updateTransactionInDb } from '../../services/transactions';
+import { updateTransaction as updateTransactionInDb, listTransactionsByProjectIds } from '../../services/transactions';
 import { updateTeamPaymentRecord as updateTeamPaymentRecordInDb } from '../../services/teamPaymentRecords';
 import { useFinance } from '../../features/finance/hooks/useFinance';
 
@@ -214,9 +214,11 @@ const InvoicePage: React.FC<InvoicePageProps> = ({
       if (updated.projectId && updated.type === TransactionType.INCOME) {
         const project = projects.find((item) => item.id === updated.projectId);
         if (project) {
-          const paidAmount = transactions
-            .map((item) => item.id === updated.id ? updated : item)
-            .filter((item) => item.projectId === updated.projectId && item.type === TransactionType.INCOME)
+          // Baca langsung dari database: cache global hanya menyimpan 100 transaksi
+          // terbaru sehingga pembayaran lama bisa terlewat dari total.
+          const projectTransactions = await listTransactionsByProjectIds([updated.projectId]);
+          const paidAmount = projectTransactions
+            .filter((item) => item.type === TransactionType.INCOME)
             .reduce((total, item) => total + (Number(item.amount) || 0), 0);
           const paymentStatus = paidAmount >= project.totalCost
             ? PaymentStatus.LUNAS

@@ -64,6 +64,9 @@ const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({
   const additionalPackagesTotal = safeAdditionalPackages.reduce((acc, packageItem) => acc + (Number(packageItem?.price) || 0), 0);
   const customCostsTotal = safeCustomCosts.reduce((acc, curr) => acc + (Number(curr?.amount) || 0), 0);
   const packagePrice = Math.max(0, subtotal - addOnsTotal - additionalPackagesTotal - (Number(project.transportCost) || 0) - customCostsTotal);
+  const paidAmount = Number(project.amountPaid) || 0;
+  const balanceDue = Math.max(0, (Number(project.totalCost) || 0) - paidAmount);
+  const isFullyPaid = balanceDue <= 0;
 
   // Find the package description
   const mainPackage = safePackages.find(p => p.id === project.packageId || p.name === project.packageName);
@@ -325,11 +328,11 @@ const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({
             </div>
             <div className="invoice-total-row flex justify-between text-[7.5px] sm:text-[11px] text-green-600 px-1.5 sm:px-2 pt-0.5 font-bold">
               <span>Sudah Dibayar</span>
-              <span>{formatCurrency(project.amountPaid || 0)}</span>
+              <span>{formatCurrency(paidAmount)}</span>
             </div>
-            <div className="invoice-balance-due flex justify-between items-center px-1.5 py-1 sm:px-2.5 sm:py-1.5 border sm:border-2 border-brand-accent/20 rounded-md mt-0.5 sm:mt-1 bg-brand-accent/5 print:bg-white print:border-slate-800">
-              <span className="invoice-total-label text-[7px] sm:text-[11px] font-black text-brand-accent uppercase print:text-black">Sisa Pembayaran</span>
-              <span className="invoice-balance-val text-[9px] sm:text-base font-black text-brand-accent print:text-black tracking-tight">{formatCurrency(project.totalCost - (project.amountPaid || 0))}</span>
+            <div className={`invoice-balance-due flex justify-between items-center px-1.5 py-1 sm:px-2.5 sm:py-1.5 border sm:border-2 rounded-md mt-0.5 sm:mt-1 print:bg-white ${isFullyPaid ? 'border-green-200 bg-green-50 print:border-slate-800' : 'border-brand-accent/20 bg-brand-accent/5 print:border-slate-800'}`}>
+              <span className={`invoice-total-label text-[7px] sm:text-[11px] font-black uppercase print:text-black ${isFullyPaid ? 'text-green-700' : 'text-brand-accent'}`}>{isFullyPaid ? 'Lunas' : 'Sisa Pembayaran'}</span>
+              <span className={`invoice-balance-val text-[9px] sm:text-base font-black tracking-tight print:text-black ${isFullyPaid ? 'text-green-700' : 'text-brand-accent'}`}>{formatCurrency(balanceDue)}</span>
             </div>
           </div>
         </div>

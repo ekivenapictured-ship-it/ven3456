@@ -297,22 +297,19 @@ export function useFinanceOperations({
             if (newTx.projectId) {
                 const proj = projects.find(p => p.id === newTx.projectId);
                 if (proj) {
-                    const projectTransactions = [...transactions, ...(mode === 'add' ? [newTx] : [])].filter(t =>
-                        t.projectId === proj.id &&
-                        (t.category.includes('DP') || t.category.includes('Pelunasan') || t.category.includes('Pembayaran') || t.category.includes('Koreksi'))
-                    );
-
-                    const totalPaid = projectTransactions.reduce((acc, t) => {
-                        if (t.id === data?.id && mode === 'edit') {
-                            return acc + Number(newTx.amount);
-                        }
-                        return acc + Number(t.amount);
-                    }, 0);
-
-                    const newPaymentStatus = totalPaid >= proj.totalCost ? PaymentStatus.LUNAS : (totalPaid > 0 ? PaymentStatus.DP_TERBAYAR : PaymentStatus.BELUM_BAYAR);
-
                     try {
+                        // Sumber kebenaran = seluruh transaksi pemasukan acara ini di database.
+                        // Cache global hanya menyimpan 100 transaksi terbaru, sehingga
+                        // pembayaran lama (mis. DP) bisa terlewat dan membuat amount_paid salah.
+                        const { listTransactionsByProjectIds } = await import('../../../services/transactions');
                         const { updateProject: updateProjectInDb } = await import('../../../services/projects');
+                        const projectTransactions = await listTransactionsByProjectIds([proj.id]);
+                        const totalPaid = projectTransactions
+                            .filter(t => t.type === TransactionType.INCOME)
+                            .reduce((acc, t) => acc + Number(t.amount), 0);
+
+                        const newPaymentStatus = totalPaid >= proj.totalCost ? PaymentStatus.LUNAS : (totalPaid > 0 ? PaymentStatus.DP_TERBAYAR : PaymentStatus.BELUM_BAYAR);
+
                         await updateProjectInDb(proj.id, { amountPaid: totalPaid, paymentStatus: newPaymentStatus });
                         setProjects(prev => prev.map(p => p.id === proj.id ? { ...p, amountPaid: totalPaid, paymentStatus: newPaymentStatus as any } : p));
                     } catch (e) {

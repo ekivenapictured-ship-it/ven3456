@@ -595,17 +595,21 @@ export const buildInvoicePdf = async (input: InvoicePdfInput): Promise<jsPDF> =>
 
   drawTotalRow('Sudah Dibayar', formatCurrency(project.amountPaid || 0), COLORS.green, 'bold');
 
+  const paidAmount = Number(project.amountPaid) || 0;
+  const balanceDue = Math.max(0, (Number(project.totalCost) || 0) - paidAmount);
+  const isFullyPaid = balanceDue <= 0;
+
   const balanceBoxH = 9.5;
-  fill(accentSoft);
-  stroke(accentLine);
+  fill(isFullyPaid ? mixWithWhite(COLORS.green, 0.9) : accentSoft);
+  stroke(isFullyPaid ? mixWithWhite(COLORS.green, 0.55) : accentLine);
   doc.setLineWidth(0.3);
   doc.roundedRect(totalsX, totalY, totalsW, balanceBoxH, 1, 1, 'FD');
   setFont(8, 'bold');
-  ink(accent);
-  doc.text('SISA PEMBAYARAN', totalsX + 2.5, totalY + balanceBoxH / 2 + (8 * PT_TO_MM) / 2);
+  ink(isFullyPaid ? COLORS.green : accent);
+  doc.text(isFullyPaid ? 'LUNAS' : 'SISA PEMBAYARAN', totalsX + 2.5, totalY + balanceBoxH / 2 + (8 * PT_TO_MM) / 2);
   setFont(11, 'bold');
   doc.text(
-    formatCurrency((Number(project.totalCost) || 0) - (Number(project.amountPaid) || 0)),
+    formatCurrency(balanceDue),
     totalsX + totalsW - 2.5,
     totalY + balanceBoxH / 2 + (11 * PT_TO_MM) / 2,
     { align: 'right' },
