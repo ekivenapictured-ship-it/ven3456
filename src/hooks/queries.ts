@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { listClients } from '../services/clients';
 import { listProjectsWithRelations, listProjectPackageIds } from '../services/projects';
-import { listTransactions } from '../services/transactions';
+import { listTransactions, listTransactionsByProjectIds } from '../services/transactions';
 import { listTeamMembers } from '../services/teamMembers';
 import { listLeads } from '../services/leads';
 import { listCards, normalizeCard } from '../services/cards';
@@ -66,6 +66,24 @@ export const useTransactionsQuery = (options: DomainQueryOptions = {}) => useQue
     staleTime: REALTIME_STALE_TIME,
     enabled: options.enabled !== false,
 });
+
+/**
+ * Transaksi milik daftar project tertentu, dibaca langsung dari database tanpa
+ * batas 100 baris. Dipakai Detail Pengantin agar riwayat pembayaran lama tidak
+ * hilang hanya karena tergeser dari cache global.
+ *
+ * Key diawali `transactions` supaya ikut ter-invalidate oleh
+ * `invalidateQueries({ queryKey: ['transactions'] })` yang sudah ada.
+ */
+export const useProjectTransactionsQuery = (projectIds: string[], options: DomainQueryOptions = {}) => {
+  const uniqueIds = [...new Set(projectIds.filter(Boolean))].sort();
+  return useQuery({
+    queryKey: ['transactions', 'byProject', uniqueIds],
+    queryFn: () => listTransactionsByProjectIds(uniqueIds),
+    staleTime: REALTIME_STALE_TIME,
+    enabled: options.enabled !== false && uniqueIds.length > 0,
+  });
+};
 
 export const useTeamMembersQuery = (options: DomainQueryOptions = {}) => useQuery({
     queryKey: ['teamMembers'],

@@ -15,6 +15,7 @@ import {
 import { Sparkles, Zap, Plus, Settings, Gift, ChevronDown } from 'lucide-react';
 import { updateProject as updateProjectRow } from '../../../services/projects';
 import { createTransaction as createTransactionRow } from '../../../services/transactions';
+import { useProjectTransactionsQuery } from '../../../hooks/queries';
 import { updatePocket as updatePocketRow } from '../../../services/pockets';
 import { updateTeamProjectPayments as updateTeamProjectPaymentsRow } from '../../../services/teamProjectPayments';
 import { createTeamPaymentRecord } from '../../../services/teamPaymentRecords';
@@ -213,6 +214,44 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
     });
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [packages]);
+
+  const clientProjects = useMemo(() => client
+    ? projects
+        .filter(p => p.clientId === client.id)
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .map(p => projectOverrides[p.id] ? { ...p, ...projectOverrides[p.id] } : p)
+    : [],
+    [projects, client, projectOverrides]);
+
+  const clientProjectIds = useMemo(() => clientProjects.map(p => p.id), [clientProjects]);
+
+  // Riwayat pembayaran harus lengkap: baca langsung dari DB per project_id klien,
+  // bukan dari cache global yang hanya menyimpan 100 transaksi terbaru.
+  const { data: persistedClientTransactions = [] } = useProjectTransactionsQuery(clientProjectIds);
+
+  const clientTransactions = useMemo(() => {
+    const projectIds = new Set(clientProjectIds);
+    const byId = new Map<string, Transaction>();
+    persistedClientTransactions.forEach(t => byId.set(t.id, t));
+    // Overlay dari cache realtime agar transaksi baru/terubah langsung tampil.
+    transactions.forEach(t => {
+      if (t.projectId && projectIds.has(t.projectId)) byId.set(t.id, t);
+    });
+    return Array.from(byId.values())
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [clientProjectIds, persistedClientTransactions, transactions]);
+
+  // Total pembayaran yang benar-benar masuk per acara, dihitung dari transaksi
+  // pemasukan yang tertaut agar tab Invoice cocok dengan ledger.
+  const clientPaidByProject = useMemo(() => {
+    const map = new Map<string, number>();
+    clientTransactions.forEach(t => {
+      if (t.type === TransactionType.INCOME && t.projectId) {
+        map.set(t.projectId, (map.get(t.projectId) || 0) + t.amount);
+      }
+    });
+    return map;
+  }, [clientTransactions]);
 
   if (!client) return null;
 
@@ -693,15 +732,6 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
 
   // ── derived data ─────────────────────────────────────────────────────────
 
-  const clientProjects = projects
-    .filter(p => p.clientId === client.id)
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .map(p => projectOverrides[p.id] ? { ...p, ...projectOverrides[p.id] } : p);
-
-  const clientTransactions = transactions
-    .filter(t => clientProjects.some(p => p.id === t.projectId))
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
   const totalProjects = clientProjects.length;
 
   // ── avatar initials ───────────────────────────────────────────────────────
@@ -871,7 +901,8 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                 - regularAddOns.reduce((sum, item) => sum + Number(item.price || 0), 0)
                 - additionalPackages.reduce((sum, item) => sum + Number(item.price || 0), 0)
                 - Number(p.transportCost || 0);
-              const remainingBalance = p.totalCost - p.amountPaid;
+              const totalPaid = clientPaidByProject.get(p.id) ?? 0;
+              const remainingBalance = p.totalCost - totalPaid;
               const eventDateLabel = p.date ? new Date(p.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Tanggal belum ditentukan';
 
               return (
@@ -911,7 +942,7 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                         {Number(p.discountAmount) > 0 && <div className="flex justify-between gap-3 border-t border-brand-border pt-2 text-red-600"><span>Diskon</span><strong>−{formatCurrency(Number(p.discountAmount))}</strong></div>}
                       </div>
                     </details>
-                    <div className="grid grid-cols-3 gap-2"><FinancePill label="Total" value={formatCurrency(p.totalCost)} color="neutral" /><FinancePill label="Terbayar" value={formatCurrency(p.amountPaid)} color="green" /><FinancePill label="Sisa" value={formatCurrency(remainingBalance)} color={remainingBalance > 0 ? 'red' : 'green'} /></div>
+                    <div className="grid grid-cols-3 gap-2"><FinancePill label="Total" value={formatCurrency(p.totalCost)} color="neutral" /><FinancePill label="Terbayar" value={formatCurrency(totalPaid)} color="green" /><FinancePill label="Sisa" value={formatCurrency(remainingBalance)} color={remainingBalance > 0 ? 'red' : 'green'} /></div>
                     <div className="client-detail-action-group flex flex-wrap items-center justify-end gap-2">
                       {p.dpProofUrl && <a href={p.dpProofUrl} target="_blank" rel="noopener noreferrer" className="button-secondary inline-flex items-center gap-1.5 !px-3 !py-2 text-xs"><CreditCardIcon className="h-4 w-4" />Bukti DP</a>}
                       <button type="button" onClick={() => onViewInvoice(p)} className="button-primary inline-flex items-center gap-1.5 !px-3 !py-2 text-xs"><FileTextIcon className="h-4 w-4" />Invoice PDF</button>
@@ -961,7 +992,9 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                   return { payment, paymentRecord, paymentTransaction };
                 });
               })();
-              const totalTeamFees = teamProjectPaymentsForEvent.reduce((sum, payment) => sum + payment.fee, 0);
+              const totalTeamFees = teamPaymentHistoryRows
+                .filter(({ paymentTransaction }) => Boolean(paymentTransaction))
+                .reduce((sum, { payment }) => sum + payment.fee, 0);
               const totalClientIncome = clientPaymentTransactions.reduce((sum, transaction) => sum + transaction.amount, 0);
               const totalEventExpenses = eventExpenseTransactions.reduce((sum, transaction) => sum + transaction.amount, 0);
               const netProfit = totalClientIncome - totalTeamFees - totalEventExpenses;
@@ -976,18 +1009,22 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                   receiptTransaction: transaction,
                   teamPayment: null as TeamProjectPayment | null,
                   paymentRecord: null as TeamPaymentRecord | null,
+                  settled: true,
                 })),
-                ...teamPaymentHistoryRows.map(({ payment, paymentRecord, paymentTransaction }) => ({
-                  id: `team-${payment.id}`,
-                  date: payment.date,
-                  direction: 'Keluar' as const,
-                  title: payment.role ? `${payment.teamMemberName} (${payment.role})` : payment.teamMemberName,
-                  category: 'Pembayaran Tim / Vendor',
-                  amount: payment.fee,
-                  receiptTransaction: paymentTransaction ?? null,
-                  teamPayment: payment,
-                  paymentRecord: paymentRecord ?? null,
-                })),
+                ...teamPaymentHistoryRows
+                  .filter(({ paymentTransaction }) => Boolean(paymentTransaction))
+                  .map(({ payment, paymentRecord, paymentTransaction }) => ({
+                    id: `team-${payment.id}`,
+                    date: payment.date,
+                    direction: 'Keluar' as const,
+                    title: payment.role ? `${payment.teamMemberName} (${payment.role})` : payment.teamMemberName,
+                    category: 'Pembayaran Tim / Vendor',
+                    amount: payment.fee,
+                    receiptTransaction: paymentTransaction ?? null,
+                    teamPayment: payment,
+                    paymentRecord: paymentRecord ?? null,
+                    settled: true,
+                  })),
                 ...eventExpenseTransactions.map(transaction => ({
                   id: `expense-${transaction.id}`,
                   date: transaction.date,
@@ -998,6 +1035,7 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                   receiptTransaction: transaction,
                   teamPayment: null as TeamProjectPayment | null,
                   paymentRecord: null as TeamPaymentRecord | null,
+                  settled: true,
                 })),
               ];
               const sortLedgerRows = (rows: typeof projectLedgerRows) =>
@@ -1560,11 +1598,11 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                                     <td className="px-3 py-2">
                                       <div className="flex items-center justify-end gap-1.5">
                                         {teamPayment && (
-                                          <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${teamPayment.status === 'Paid' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-800'}`}>
-                                            {teamPayment.status === 'Paid' ? 'Lunas' : 'Belum lunas'}
+                                          <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${row.settled ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-800'}`}>
+                                            {row.settled ? 'Lunas' : 'Belum lunas'}
                                           </span>
                                         )}
-                                        {teamPayment && teamPayment.status === 'Unpaid' && (
+                                        {teamPayment && !row.settled && (
                                           <>
                                             <button
                                               type="button"
@@ -1708,11 +1746,11 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                                   {teamPayment && (
                                     <div className="mt-1.5 flex flex-wrap items-center justify-end gap-1 border-t border-brand-border pt-1.5">
                                       {teamPayment && (
-                                        <span className={`mr-auto rounded-full px-2 py-0.5 text-[9px] font-bold ${teamPayment.status === 'Paid' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-800'}`}>
-                                          {teamPayment.status === 'Paid' ? 'Lunas' : 'Belum lunas'}
+                                        <span className={`mr-auto rounded-full px-2 py-0.5 text-[9px] font-bold ${row.settled ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-800'}`}>
+                                          {row.settled ? 'Lunas' : 'Belum lunas'}
                                         </span>
                                       )}
-                                      {teamPayment && teamPayment.status === 'Unpaid' && (
+                                      {teamPayment && !row.settled && (
                                         <>
                                           <button
                                             type="button"

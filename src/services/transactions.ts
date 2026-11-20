@@ -148,6 +148,59 @@ export async function listTransactions(options: { limit?: number; offset?: numbe
   return (data || []).map(normalizeTransaction);
 }
 
+/**
+ * Ambil SEMUA transaksi yang tertaut ke daftar project tertentu.
+ *
+ * Cache global hanya menyimpan 100 transaksi terbaru, sehingga riwayat
+ * pembayaran lama bisa hilang dari Detail Pengantin. Fungsi ini membaca
+ * langsung dari database tanpa batas 100 baris.
+ */
+export async function listTransactionsByProjectIds(projectIds: string[]): Promise<Transaction[]> {
+  const ids = [...new Set(projectIds.filter(Boolean))];
+  if (ids.length === 0) return [];
+
+  const PAGE_SIZE = 500;
+  const rows: TransactionRow[] = [];
+  let offset = 0;
+
+  for (;;) {
+    const { data, error } = await supabase
+      .from(TRANSACTIONS)
+      .select('*')
+      .in('project_id', ids)
+      .order('date', { ascending: false })
+      .order('id', { ascending: false })
+      .range(offset, offset + PAGE_SIZE - 1);
+
+    if (error) throw error;
+
+    const batch = data || [];
+    rows.push(...batch);
+    if (batch.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
+  }
+
+  return rows.map(normalizeTransaction);
+}
+
+/**
+ * Transaksi kas yang belum tertaut ke acara mana pun (project_id NULL).
+ * Dipakai untuk menampilkan & menautkan catatan lama dari halaman Keuangan.
+ */
+export async function listUnlinkedTransactions(limit = 300): Promise<Transaction[]> {
+  const size = Math.min(1000, Math.max(1, Math.floor(limit)));
+  const { data, error } = await supabase
+    .from(TRANSACTIONS)
+    .select('*')
+    .is('project_id', null)
+    .order('date', { ascending: false })
+    .order('id', { ascending: false })
+    .range(0, size - 1);
+
+  if (error) throw error;
+  return (data || []).map(normalizeTransaction);
+}
+
 export async function listTransactionsPaginated(
   page = 1,
   pageSize = 10,

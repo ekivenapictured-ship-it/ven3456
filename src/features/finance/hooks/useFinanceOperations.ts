@@ -297,16 +297,16 @@ export function useFinanceOperations({
             if (newTx.projectId) {
                 const proj = projects.find(p => p.id === newTx.projectId);
                 if (proj) {
-                    const projectTransactions = [...transactions, ...(mode === 'add' ? [form] : [])].filter(t =>
+                    const projectTransactions = [...transactions, ...(mode === 'add' ? [newTx] : [])].filter(t =>
                         t.projectId === proj.id &&
                         (t.category.includes('DP') || t.category.includes('Pelunasan') || t.category.includes('Pembayaran') || t.category.includes('Koreksi'))
                     );
 
                     const totalPaid = projectTransactions.reduce((acc, t) => {
                         if (t.id === data?.id && mode === 'edit') {
-                            return acc + Number(form.amount);
+                            return acc + Number(newTx.amount);
                         }
-                        return acc + t.amount;
+                        return acc + Number(t.amount);
                     }, 0);
 
                     const newPaymentStatus = totalPaid >= proj.totalCost ? PaymentStatus.LUNAS : (totalPaid > 0 ? PaymentStatus.DP_TERBAYAR : PaymentStatus.BELUM_BAYAR);

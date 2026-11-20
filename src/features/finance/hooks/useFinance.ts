@@ -4,7 +4,7 @@ import { createTransaction as createTransactionRow, updateCardBalance, updateTra
 import { updatePocket as updatePocketRow, deletePocket as deletePocketRow } from '../../../services/pockets';
 import { deleteCard as deleteCardRow, safeDeleteCard } from '../../../services/cards';
 import { updateTeamProjectPayments as updateTeamProjectPaymentsApi } from '../../../services/teamProjectPayments';
-import { updateTeamPaymentRecord as updateTeamPaymentRecordApi } from '../../../services/teamPaymentRecords';
+import { updateTeamPaymentRecord as updateTeamPaymentRecordApi, deleteTeamPaymentRecord as deleteTeamPaymentRecordApi } from '../../../services/teamPaymentRecords';
 
 export const useFinance = (
     transactions: Transaction[],
@@ -182,6 +182,34 @@ export const useFinance = (
                 }
                 await deleteTransactionApi(id);
                 setTransactions(p => p.filter(i => i.id !== id));
+
+                if (tx && tx.type === TransactionType.EXPENSE && tx.projectId && tx.category === 'Gaji Tim / Vendor') {
+                    const memberName = tx.description?.match(/^Gaji Freelance - (.+?) \(/)?.[1];
+                    const linkedPayment = memberName
+                        ? teamProjectPayments.find(payment =>
+                            payment.projectId === tx.projectId &&
+                            payment.teamMemberName === memberName &&
+                            payment.status === 'Paid')
+                        : undefined;
+                    if (linkedPayment) {
+                        try {
+                            const linkedRecord = teamPaymentRecords.find(record => record.projectPaymentIds.includes(linkedPayment.id));
+                            const [savedPayment] = await updateTeamProjectPaymentsApi([{ ...linkedPayment, status: 'Unpaid' }]);
+                            setTeamProjectPayments(prev => prev.map(payment =>
+                                payment.id === linkedPayment.id
+                                    ? (savedPayment ?? { ...payment, status: 'Unpaid' as const })
+                                    : payment,
+                            ));
+                            if (linkedRecord) {
+                                await deleteTeamPaymentRecordApi(linkedRecord.id);
+                                setTeamPaymentRecords(prev => prev.filter(record => record.id !== linkedRecord.id));
+                            }
+                        } catch (syncError) {
+                            console.error('[Finance] Gagal membatalkan pembayaran tim setelah transaksi dihapus.', syncError);
+                        }
+                    }
+                }
+
                 showNotification('Transaksi berhasil dihapus.');
             } catch (e) {
                 alert('Gagal menghapus transaksi di database. Coba lagi.');
@@ -198,7 +226,7 @@ export const useFinance = (
             }
             setPockets(p => p.filter(i => i.id !== id));
         }
-    }, [transactions, setTransactions, pockets, setPockets, cards, setCards, showNotification]);
+    }, [transactions, setTransactions, pockets, setPockets, cards, setCards, showNotification, teamProjectPayments, setTeamProjectPayments, teamPaymentRecords, setTeamPaymentRecords]);
 
     return {
         handleAddTransaction,
