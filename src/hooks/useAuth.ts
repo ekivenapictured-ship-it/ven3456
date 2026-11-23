@@ -42,6 +42,25 @@ export function useAuth(): UseAuthReturn {
 
   const [users, setUsers] = useState<User[]>([]);
 
+  // Supabase membuang sesi (dan memancarkan SIGNED_OUT) saat refresh token
+  // ditolak, mis. kedaluwarsa, sudah dicabut, atau token dirotasi di perangkat
+  // lain. Tanpa listener ini, flag autentikasi lokal tetap "true" sehingga UI
+  // mengira masih login padahal seluruh request sudah 401.
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event !== "SIGNED_OUT") return;
+      window.setTimeout(() => {
+        queryClient.clear();
+        setIsAuthenticated(false);
+        setCurrentUser(null);
+      }, 0);
+    });
+
+    return () => data.subscription.unsubscribe();
+  }, [queryClient]);
+
   useEffect(() => {
     if (!isSupabaseConfigured || !isAuthenticated) return;
 
@@ -109,7 +128,10 @@ export function useAuth(): UseAuthReturn {
 
   const handleLogout = useCallback(async () => {
     try {
-      await supabase.auth.signOut();
+      // scope 'local' hanya membuang sesi di perangkat ini; scope default
+      // ('global') mencabut refresh token di semua perangkat sehingga sesi
+      // device lain gagal refresh dengan 400 pada load berikutnya.
+      await supabase.auth.signOut({ scope: "local" });
     } catch (e) {
       console.warn("[Supabase] Logout error:", e);
     }
