@@ -35,7 +35,9 @@ const ClientFinanceRecapView: React.FC<Props> = ({ clients, projects, transactio
       return {
         project, client, incomes, expenses, packageAmount, addOns, additionalPackages,
         expenseTotal: expenses.reduce((sum, item) => sum + (Number(item.amount) || 0), 0),
-        incomeTotal: incomes.reduce((sum, item) => sum + (Number(item.amount) || 0), 0),
+        incomeTotal: incomes.length > 0
+          ? incomes.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
+          : (Number(project.amountPaid) || 0),
         contractedIncome,
       };
     })
@@ -56,7 +58,7 @@ const ClientFinanceRecapView: React.FC<Props> = ({ clients, projects, transactio
       <Summary label="Total Paket" value={money(rows.reduce((sum, row) => sum + row.contractedIncome, 0))} tone="package" />
       <Summary label="Pemasukan tercatat" value={money(totalIncome)} tone="income" />
       <Summary label="Pengeluaran tercatat" value={money(totalExpense)} tone="expense" />
-      <Summary label="Laba bersih" value={money(totalIncome - totalExpense)} tone={totalIncome >= totalExpense ? 'profit' : 'loss'} />
+      <Summary label="Laba bersih" value={money(rows.reduce((sum, row) => sum + row.contractedIncome, 0) - totalExpense)} tone={rows.reduce((sum, row) => sum + row.contractedIncome, 0) >= totalExpense ? 'profit' : 'loss'} />
     </div>
     {rows.length === 0 ? <div className="rounded-2xl border border-[#CBD5E1] bg-white p-8 text-center text-sm text-[#5A6A85]">Belum ada acara pada periode ini.</div> : rows.map(({ project, client, incomes, expenses, packageAmount, addOns, additionalPackages, expenseTotal, incomeTotal, contractedIncome }) => {
       const expanded = expandedId === project.id;
@@ -66,7 +68,7 @@ const ClientFinanceRecapView: React.FC<Props> = ({ clients, projects, transactio
           <Metric label="Total Paket" value={money(contractedIncome)} tone="package" />
           <Metric label="Pemasukan" value={money(incomeTotal)} tone="income" />
           <Metric label="Pengeluaran" value={money(expenseTotal)} tone="expense" />
-          <Metric label="Laba bersih" value={money(incomeTotal - expenseTotal)} tone={incomeTotal >= expenseTotal ? 'profit' : 'loss'} />
+          <Metric label="Laba bersih" value={money(contractedIncome - expenseTotal)} tone={contractedIncome >= expenseTotal ? 'profit' : 'loss'} />
           <span className="col-span-2 flex items-center justify-center gap-1 border-t border-brand-border pt-2 text-[11px] font-semibold text-brand-accent sm:col-span-5 sm:justify-end">
             {expanded ? 'Sembunyikan rincian transaksi' : 'Lihat rincian transaksi'}
             {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
@@ -81,7 +83,7 @@ const ClientFinanceRecapView: React.FC<Props> = ({ clients, projects, transactio
             {Number(project.discountAmount) > 0 && <Line label="Diskon" value={`− ${money(Number(project.discountAmount))}`} />}
           </Ledger>
           <Ledger title="Pemasukan tercatat" total={money(incomeTotal)} tone="income">
-            {incomes.length ? incomes.map(item => <Line key={item.id} label={`${item.date ? new Date(`${item.date.slice(0, 10)}T00:00:00`).toLocaleDateString('id-ID') : ''} · ${item.description || item.category}`} value={money(Number(item.amount) || 0)} tone="income" />) : <Empty>Belum ada transaksi pemasukan tercatat.</Empty>}
+            {incomes.length ? incomes.map(item => <Line key={item.id} label={`${item.date ? new Date(`${item.date.slice(0, 10)}T00:00:00`).toLocaleDateString('id-ID') : ''} · ${item.description || item.category}`} value={money(Number(item.amount) || 0)} tone="income" />) : (Number(project.amountPaid) > 0 ? <Line label="Saldo pembayaran proyek (tanpa transaksi rinci)" value={money(Number(project.amountPaid) || 0)} tone="income" /> : <Empty>Belum ada transaksi pemasukan tercatat.</Empty>)}
           </Ledger>
           <Ledger title="Pengeluaran tercatat" total={money(expenseTotal)} tone="expense">
             {expenses.length ? expenses.map(item => <Line key={item.id} label={`${item.date ? new Date(`${item.date.slice(0, 10)}T00:00:00`).toLocaleDateString('id-ID') : ''} · ${item.description || item.category}`} value={money(Number(item.amount) || 0)} tone="expense" />) : <Empty>Belum ada transaksi pengeluaran tercatat.</Empty>}

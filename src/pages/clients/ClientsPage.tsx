@@ -401,6 +401,30 @@ export const Clients: React.FC<ClientsProps> = ({
             });
         });
 
+        projectMetaById.forEach((meta, projectId) => {
+            const hasIncomeTransaction = transactions.some(transaction =>
+                transaction.projectId === projectId && transaction.type === TransactionType.INCOME,
+            );
+            if (hasIncomeTransaction) return;
+
+            const project = filteredClientData
+                .flatMap(client => client.projects)
+                .find(item => item.id === projectId);
+            const paidAmount = Number(project?.amountPaid) || 0;
+            if (paidAmount <= 0) return;
+
+            ledgerEntries.push({
+                date: project?.date || '-',
+                clientId: meta.clientId,
+                clientName: meta.clientName,
+                projectName: meta.projectName,
+                direction: 'Masuk',
+                category: 'Saldo Pembayaran Proyek',
+                description: 'Tanpa transaksi pemasukan rinci',
+                amount: paidAmount,
+            });
+        });
+
         teamProjectPayments.forEach(payment => {
             const meta = projectMetaById.get(payment.projectId);
             if (!meta) return;
@@ -437,7 +461,7 @@ export const Clients: React.FC<ClientsProps> = ({
                 client.projects.length,
                 totals.income,
                 totals.expense,
-                totals.income - totals.expense,
+                filteredClientData.find(item => item.id === client.id)?.totalProjectValue - totals.expense,
                 client.balanceDue,
             ];
         });
@@ -528,7 +552,7 @@ export const Clients: React.FC<ClientsProps> = ({
                         client.name,
                         packageLines.length ? packageLines.join('\n') : 'Belum ada paket',
                         expenseLines.length ? expenseLines.join('\n') : 'Tanpa pengeluaran',
-                        totals.income - totals.expense,
+                        client.projects.reduce((sum, project) => sum + (Number(project.totalCost) || 0), 0) - totals.expense,
                     ] as (string | number)[],
                 };
             })

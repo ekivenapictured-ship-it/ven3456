@@ -219,7 +219,7 @@ const buildClientLedger = (
         projectCostDetails,
         expenseByProject: Array.from(grouped.values()),
         expenseTotal: transactionTotals.expense,
-        netProfit: transactionTotals.income - transactionTotals.expense,
+        netProfit: totalVal - transactionTotals.expense,
         payStatus: clientProjects[0]?.paymentStatus || '-',
     };
 };
@@ -802,8 +802,25 @@ const ClientReports: React.FC<ClientReportsProps> = ({
             }
             totals.set(clientId, clientTotals);
         });
+
+        // project.amountPaid adalah sumber pembayaran cadangan untuk data lama
+        // yang belum memiliki transaksi pemasukan terkait.
+        filteredProjects.forEach(project => {
+            const hasIncomeTransaction = transactions.some(transaction =>
+                transaction.projectId === project.id && transaction.type === TransactionType.INCOME,
+            );
+            if (hasIncomeTransaction) return;
+
+            const paidAmount = Number(project.amountPaid) || 0;
+            if (paidAmount <= 0) return;
+
+            const clientTotals = totals.get(project.clientId) || { income: 0, expense: 0, expenses: [] };
+            clientTotals.income += paidAmount;
+            totals.set(project.clientId, clientTotals);
+        });
+
         return totals;
-    }, [transactions, projectClientIds]);
+    }, [transactions, projectClientIds, filteredProjects]);
 
     const clientTableTotals = searchedAndSortedClients.reduce((totals, client) => {
         const projectValue = filteredProjects
@@ -813,7 +830,7 @@ const ClientReports: React.FC<ClientReportsProps> = ({
         return {
             projectValue: totals.projectValue + projectValue,
             expense: totals.expense + transactionTotals.expense,
-            netProfit: totals.netProfit + transactionTotals.income - transactionTotals.expense,
+            netProfit: totals.netProfit + projectValue - transactionTotals.expense,
         };
     }, { projectValue: 0, expense: 0, netProfit: 0 });
 
@@ -825,7 +842,7 @@ const ClientReports: React.FC<ClientReportsProps> = ({
         return {
             projectValue: totals.projectValue + projectValue,
             expense: totals.expense + transactionTotals.expense,
-            netProfit: totals.netProfit + transactionTotals.income - transactionTotals.expense,
+            netProfit: totals.netProfit + projectValue - transactionTotals.expense,
         };
     }, { projectValue: 0, expense: 0, netProfit: 0 });
 
@@ -1767,7 +1784,7 @@ const ClientReports: React.FC<ClientReportsProps> = ({
                                         <th className="p-3 font-semibold whitespace-nowrap text-right">Biaya Produksi</th>
                                         <th
                                             className="p-3 font-semibold whitespace-nowrap text-right"
-                                            title="Kas masuk dikurangi kas keluar dari transaksi pengantin ini (bukan Nilai Total − Biaya Produksi)"
+                                            title="Nilai Total dikurangi Biaya Produksi dari transaksi pengantin ini"
                                         >
                                             Laba Bersih
                                         </th>

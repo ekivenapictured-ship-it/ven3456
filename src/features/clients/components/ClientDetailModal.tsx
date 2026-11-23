@@ -992,12 +992,9 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                   return { payment, paymentRecord, paymentTransaction };
                 });
               })();
-              const totalTeamFees = teamPaymentHistoryRows
-                .filter(({ paymentTransaction }) => Boolean(paymentTransaction))
-                .reduce((sum, { payment }) => sum + payment.fee, 0);
-              const totalClientIncome = clientPaymentTransactions.reduce((sum, transaction) => sum + transaction.amount, 0);
+              const totalTeamFees = teamProjectPaymentsForEvent.reduce((sum, payment) => sum + (Number(payment.fee) || 0), 0);
               const totalEventExpenses = eventExpenseTransactions.reduce((sum, transaction) => sum + transaction.amount, 0);
-              const netProfit = totalClientIncome - totalTeamFees - totalEventExpenses;
+              const netProfit = (Number(p.totalCost) || 0) - totalTeamFees - totalEventExpenses;
               const projectLedgerRows = [
                 ...clientPaymentTransactions.map(transaction => ({
                   id: `income-${transaction.id}`,
