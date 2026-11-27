@@ -992,6 +992,7 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                   return { payment, paymentRecord, paymentTransaction };
                 });
               })();
+              const totalClientIncome = clientPaymentTransactions.reduce((sum, transaction) => sum + transaction.amount, 0);
               const totalTeamFees = teamProjectPaymentsForEvent.reduce((sum, payment) => sum + (Number(payment.fee) || 0), 0);
               const totalEventExpenses = eventExpenseTransactions.reduce((sum, transaction) => sum + transaction.amount, 0);
               const netProfit = (Number(p.totalCost) || 0) - totalTeamFees - totalEventExpenses;
